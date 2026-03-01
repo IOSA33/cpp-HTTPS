@@ -10,7 +10,7 @@
 void Request::parser(const std::string& req) {
     // Clearing up old body request and headers
     m_body.clear();
-    clearHeaders();
+    m_headers.clear();
 
     auto start { std::chrono::steady_clock::now() };
     
@@ -130,12 +130,4 @@ std::string Request::getHeader(const std::string& headerToFind) const {
     }
 
     return "";
-}
-
-void Request::clearHeaders() {
-    if (!m_headers.empty()) {
-        m_headers.clear();
-    } else {
-        std::println("Request::clearHeaders, headers are already empty!");
-    }
 }
