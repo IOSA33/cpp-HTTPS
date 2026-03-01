@@ -147,10 +147,14 @@ void Response::setStatus(int code) {
 }
 
 void Response::setHeader(const std::string& key, const std::string& value) {
-    m_response += key + ": " + value + "\r\n";
+    if (!key.empty() || !value.empty()) {
+        m_response += key + ": " + value + "\r\n";
+    } else {
+        std::println("Response::setHeader, Key or Value are empty!");
+    }
 }
 
 void Response::pageNotFound() {
-    setStatus(301);
+    setStatus(302);
     redirect("https://www.youtube.com/?app");
 }

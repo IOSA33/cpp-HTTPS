@@ -82,8 +82,8 @@ int Server::run() {
         if (bytesRecv > 0) {
             recvBuf[bytesRecv] = '\0';
 
-            // Logging for debug and main logic
 
+            // Logging for debug and main logic
             std::cout << "\nRecived from client: \n" << recvBuf << std::endl;
 
             // send() Send back to the client
@@ -117,7 +117,7 @@ int Server::run() {
             }
             // The Main logic to response Client
             m_response.findRouteAndExecute(method, path, m_routes, response, m_request, m_response);
-
+            
             // App Logic completes here 
 
 
