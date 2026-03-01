@@ -23,7 +23,7 @@ int main() {
                     next(req, res);
                 } else {
                     std::println("The connection Host is not a localhost:6788!");
-                    res.setStatus(301);
+                    res.setStatus(302);
                     res.redirect("localhost:6788/jsontest");
                 }
             };

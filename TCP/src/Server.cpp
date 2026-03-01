@@ -102,6 +102,11 @@ int Server::run() {
             if (!cl.empty()) {
                 int clbytes { std::stoi(cl) };
 
+                const std::string& alreayReceived { m_request.getBody() };
+                if (!alreayReceived.empty()) {
+                    clbytes -= static_cast<int>(alreayReceived.size());
+                }
+
                 while (clbytes > 0) {
                     int bytesRecv = recv(acceptSocket, recvBuf, recvBuflen - 1, 0);
 

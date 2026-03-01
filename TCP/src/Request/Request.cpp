@@ -55,6 +55,7 @@ void Request::parser(const std::string& req) {
         auto duration {std::chrono::duration<double, std::milli>(end - start)};
         std::println("Time used: {}", duration);
 
+        m_body.append(req.substr(it + 4));
     } else {
         std::println("Request::parser, Didn't found any body!");
         return;
