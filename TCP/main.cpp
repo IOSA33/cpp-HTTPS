@@ -6,10 +6,11 @@
 int main() {
     Server server{ "0.0.0.0" , 6788 };
 
-    server.Use("PageNotFound", [](Request& req, Response& res) -> void {
-        res.setStatus(301);
-        res.redirect("https://www.youtube.com");
-    });
+    // PageNotFound is an emun for Use middleware ("check server.h" for more)
+    // server.Use("PageNotFound", [](Request& req, Response& res) -> void {
+    //     res.setStatus(301);
+    //     res.redirect("https://www.youtube.com");
+    // });
 
     auto middleware {
         [](const std::function<void(Request&, Response&)>& next) {

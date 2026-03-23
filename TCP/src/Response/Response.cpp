@@ -44,7 +44,7 @@ void Response::findRouteAndExecute(
         }
         std::println("Response::findRouteAndExecute, No such USE Method!");
     }
-    
+
     pageNotFound();
     responseToClient = response.returnResponse();
 }
@@ -97,8 +97,8 @@ void Response::readFile(std::string& file, const std::string& filePath) {
     myFile.close();
 }
 
-void Response::redirect(const std::string& url) {
-    m_response.append("Location:" + url + "\r\n");
+void Response::redirect(std::string_view url) {
+    m_response.append(std::format("Location: {} \r\n", url));
     m_response.append("\r\n");
 }
 
@@ -147,34 +147,40 @@ void Response::setStatus(int code) {
     }
 }
 
-void Response::setHeader(const std::string& key, const std::string& value) {
+void Response::setHeader(std::string_view key, std::string_view value) {
     if (!key.empty() || !value.empty()) {
-        m_response += key + ": " + value + "\r\n";
+        m_response.append(std::format("{}: {}\r\n", key, value));
     } else {
-        std::println("Response::setHeader, Key or Value are empty!");
+        std::println("Error in Response::setHeader, Key or Value are empty!");
     }
 }
 
 void Response::pageNotFound() {
-    setStatus(301);
-    redirect("https://www.youtube.com/?app");
+    const std::string pageNotFoundReply { "404 Not Found" };
+    setStatus(404);
+    setHeader("Content-Type", "text/html");
+    setHeader("Content-Length", std::to_string(pageNotFoundReply.size()));
+    setBody(pageNotFoundReply);
 }
 
-void Response::json(const std::string& content) {
+void Response::json(std::string_view content) {
     if(content.empty()) {
-        std::println("Error in \"Response::json\": Content is Empty!");
+        std::println("Error in Response::json: Content is Empty!");
         return;
     }
-    // Setting the json http header automatically
-    setHeader("Content-Type", "application/json; charset=utf-8");
-
     if (nlohmann::json::accept(content)) {
+        setHeader("Content-Type", "application/json; charset=utf-8");
         setHeader("Content-Length", std::to_string(content.size()));
         m_response.append("\r\n");
         m_response.append(content);
     } else {
         std::println("Error in Response::json: Json is not valid: {}\n", content);   
     }
+}
+
+void Response::setBody(std::string_view content){
+    m_response.append("\r\n");
+    m_response.append(content);
 }
 
 void Response::end() {
