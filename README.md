@@ -17,3 +17,6 @@ cmake ..
 ninja
 ./app.exe
 ```
+
+# Examples
+- Every function you can find in ```main.cpp``` file
