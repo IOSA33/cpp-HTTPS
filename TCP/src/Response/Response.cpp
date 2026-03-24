@@ -184,5 +184,6 @@ void Response::setBody(std::string_view content){
 }
 
 void Response::end() {
+    setHeader("Content-Length", "0");
     m_response.append("\r\n");
 }

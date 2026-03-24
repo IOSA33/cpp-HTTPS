@@ -11,6 +11,7 @@ private:
     std::string m_method{};
     std::vector<std::string> m_vec_path{};
     std::map<std::string, std::string> m_headers{};
+    // TODO: change body to json
     std::map<std::string, std::string> m_body1{};
     std::string m_body{};
 

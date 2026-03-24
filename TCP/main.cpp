@@ -6,7 +6,7 @@
 int main() {
     Server server{ "0.0.0.0" , 6788 };
 
-    // PageNotFound is an emun for Use middleware ("check server.h" for more)
+    // PageNotFound is an emun for Use middleware (check "server.h" for more)
     // server.Use("PageNotFound", [](Request& req, Response& res) -> void {
     //     res.setStatus(301);
     //     res.redirect("https://www.youtube.com");
@@ -42,6 +42,7 @@ int main() {
     server.Post("/htmltest", [](Request& req, Response& res) -> void {
         res.setStatus(201);
         std::println("Content-Length is: {}", req.getHeader("Content-Length"));
+        // Path is coming from the "build" folder
         res.sendFile("../html/htmlPostTest.html");
     });
     
@@ -52,8 +53,8 @@ int main() {
     });
 
     server.Get("/favicon.ico", [](Request& req, Response& res) -> void {
-        res.setStatus(204);
-        // end() is required function if we dont sent any file to the client
+        res.setStatus(404);
+        // end() is required function if we dont sent any data to the client
         res.end();
     });
 
