@@ -6,6 +6,8 @@
 int main() {
     Server server{ "0.0.0.0" , 6788 };
 
+    // OpenSSl
+
     // PageNotFound is an emun for Use middleware (check "server.h" for more)
     // server.Use("PageNotFound", [](Request& req, Response& res) -> void {
     //     res.setStatus(301);
