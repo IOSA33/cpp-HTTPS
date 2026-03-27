@@ -77,7 +77,6 @@ void Response::sendFile(const std::string& filePath) {
     m_response.append("\r\n");
 
     m_response.append(filestring);
-    m_response.append("\r\n");
 }
 
 void Response::readFile(std::string& file, const std::string& filePath) {
@@ -185,5 +184,6 @@ void Response::setBody(std::string_view content){
 
 void Response::end() {
     setHeader("Content-Length", "0");
+    setHeader("Connection", "close");
     m_response.append("\r\n");
 }

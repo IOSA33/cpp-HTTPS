@@ -33,7 +33,7 @@ int main() {
         }
     };
 
-    server.Get("/htmltest", middleware([](Request& req, Response& res) -> void {
+    server.Get("/html", middleware([](Request& req, Response& res) -> void {
         res.setStatus(200);
         res.setHeader("User-Agent", "App/1.0");
         std::println("Host is: {}", req.getHeader("Host"));
@@ -41,21 +41,21 @@ int main() {
         res.sendFile("../html/test.html");
     }));
 
-    server.Post("/htmltest", [](Request& req, Response& res) -> void {
+    server.Post("/html", [](Request& req, Response& res) -> void {
         res.setStatus(201);
         std::println("Content-Length is: {}", req.getHeader("Content-Length"));
         // Path is coming from the "build" folder
         res.sendFile("../html/htmlPostTest.html");
     });
     
-    server.Get("/jsontest", [](Request& req, Response& res) -> void {
+    server.Get("/json", [](Request& req, Response& res) -> void {
         res.setStatus(200);
         std::string json = R"({"password":"123", "test":"testApi"})";
         res.json(json);
     });
 
     server.Get("/favicon.ico", [](Request& req, Response& res) -> void {
-        res.setStatus(404);
+        res.setStatus(204);
         // end() is required function if we dont sent any data to the client
         res.end();
     });

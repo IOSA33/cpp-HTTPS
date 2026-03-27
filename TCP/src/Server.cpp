@@ -56,8 +56,8 @@ int Server::run() {
     }
 
     // Listen on port TCP
-    if (listen(in, 1) == SOCKET_ERROR) {
-        std::cout << "error in listen() : " << WSAGetLastError << std::endl;
+    if (listen(in, SOMAXCONN) == SOCKET_ERROR) {
+        std::cout << "error in listen() : " << WSAGetLastError() << std::endl;
     } else {
         std::cout << "Listen() is OK, I'm waiting for connections..." << std::endl;
     }
@@ -68,8 +68,7 @@ int Server::run() {
         acceptSocket = accept(in, NULL, NULL);
         if(acceptSocket == INVALID_SOCKET) {
             std::cout << "accept failed:" << WSAGetLastError() << std::endl;
-            WSACleanup();
-            return 1;
+            continue;
         } else { 
             std::cout << "accept() is working" << std::endl; 
         } 
@@ -107,7 +106,8 @@ int Server::run() {
                 int clbytes { std::stoi(cl) };
 
                 const int alreayReceived { m_request.getReceivedDataSize() };
-                if (alreayReceived != 0) {
+                std::cout << "alreayReceived: " << alreayReceived << '\n';
+                if (alreayReceived > 0) {
                     clbytes -= alreayReceived;
                 }
 
@@ -117,7 +117,7 @@ int Server::run() {
                     if (bytesRecv > 0) {
                         recvBuf[bytesRecv] = '\0';
                         std::print("\nRecived from client:\n{}\n\n", recvBuf);
-                        m_request.addBody(recvBuf, bytesRecv);
+                        m_request.addBody(recvBuf);
                         clbytes -= bytesRecv;
                     } else {
                         break;
@@ -131,6 +131,8 @@ int Server::run() {
 
 
             int bytes_sent = send(acceptSocket, response.c_str(), response.size(), 0);
+            closesocket(acceptSocket);
+
             if (bytes_sent == SOCKET_ERROR) {
                 // If sending fails, print an error
                 std::cerr << "send failed: " << WSAGetLastError() << std::endl;
@@ -138,7 +140,7 @@ int Server::run() {
                 // Print the number of bytes sent
                 std::cout << "Sent " << bytes_sent << " bytes to client." << std::endl;
             }
-
+            std::println("Connection Closed!");
 
         } else {
             // If no data is received, print an error message
