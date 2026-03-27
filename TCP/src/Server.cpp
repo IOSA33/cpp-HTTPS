@@ -94,8 +94,7 @@ int Server::run() {
 
             const std::string& method { m_request.getMethod(recvBuf) };
             std::println("Method is: {}", method);
-
-            std::string path { m_request.getPath(recvBuf) };
+            const std::string& path { m_request.getPath(recvBuf) };
             std::println("Path is: {}", path);
 
             // This parses only headers
@@ -106,7 +105,6 @@ int Server::run() {
                 int clbytes { std::stoi(cl) };
 
                 const int alreayReceived { m_request.getReceivedDataSize() };
-                std::cout << "alreayReceived: " << alreayReceived << '\n';
                 if (alreayReceived > 0) {
                     clbytes -= alreayReceived;
                 }
@@ -148,6 +146,7 @@ int Server::run() {
         }
     }
 
+    // TODO: Learn how to use signals for graceful shotdown
     // Terminating a Winsock2 dll
     WSACleanup();
     return 0;

@@ -13,7 +13,7 @@ void Request::parser(const std::string& req) {
 
     if (it != std::string::npos) {
         std::string headers = req.substr(req.find("\r\n") + 2, it);
-        
+
         bool valueBool { false };
         std::string key {};
         key.reserve(32);
@@ -93,9 +93,8 @@ void Request::splitURL(const std::string& url) {
     }
 }
 
-std::string Request::getPath(const std::string_view buf) {
-    std::string path{};
-    path.reserve(32);
+const std::string& Request::getPath(const std::string_view buf) {
+    m_path.reserve(16);
     // We know that http path is always second, so we do thr check for whitespacec
     short whitespaceAppear{ 0 };
     for (const auto& i : buf) {
@@ -106,15 +105,14 @@ std::string Request::getPath(const std::string_view buf) {
         }
 
         if (whitespaceAppear == 1) {
-            path += i;
+            m_path += i;
         }
     }
 
-    return path;
+    return m_path;
 }
 
 const std::string& Request::getMethod(const std::string_view buf) {
-    m_method.clear();
     m_method.reserve(6);
     // Longest method is 6 chars so we prevent from checking whole buf
     for (int i { 0 }; i < 5; ++i) {

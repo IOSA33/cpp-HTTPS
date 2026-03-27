@@ -9,6 +9,7 @@
 class Request {
 private:
     std::string m_method{};
+    std::string m_path{};
     std::vector<std::string> m_vec_path{};
     std::map<std::string, std::string> m_headers{};
     std::map<std::string, std::string> m_body{};
@@ -23,6 +24,6 @@ public:
     const int getReceivedDataSize() const { return m_received_data_size; }
     void splitURL(const std::string& url);
     const std::string& getMethod(const std::string_view buf);
-    std::string getPath(const std::string_view buf);
+    const std::string& getPath(const std::string_view buf);
     std::string getHeader(const std::string& headerToFind) const;
 };
