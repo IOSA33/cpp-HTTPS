@@ -8,18 +8,14 @@
 #include <string_view>
 
 void Request::parser(const std::string& req) {
-    // Clearing up old body request and headers
-    m_body.clear();
-    m_headers.clear();
-
     auto start { std::chrono::steady_clock::now() };
-    
     auto it = req.find("\r\n\r\n");
 
     if (it != std::string::npos) {
+        std::string_view headers = req.substr(req.find("\r\n") + 2, it);
         
-        std::string headers = req.substr(req.find("\r\n") + 2, it);
-        
+        std::cout << headers << '\n';
+
         bool valueBool { false };
         std::string key {};
         key.reserve(32);
@@ -55,7 +51,7 @@ void Request::parser(const std::string& req) {
         auto duration {std::chrono::duration<double, std::milli>(end - start)};
         std::println("Time used: {}", duration);
 
-        m_body.append(req.substr(it + 4));
+        //m_body.append(req.substr(it + 4));
     } else {
         std::println("Request::parser, Didn't found any body!");
         return;
@@ -64,9 +60,10 @@ void Request::parser(const std::string& req) {
     return;
 }
 
-void Request::addBody(const std::string& req, const int bytesRecieved) {
+void Request::addBody(const std::string& req) {
     if (!req.empty()) {
-        m_body.append(req, bytesRecieved);
+        auto it = req.find("=");
+        m_body.insert({req.substr(0, it), req.substr(it + 1)});
     } else {
         std::println("Request::addBody, req is empty!");
     }

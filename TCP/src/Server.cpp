@@ -106,9 +106,9 @@ int Server::run() {
             if (!cl.empty()) {
                 int clbytes { std::stoi(cl) };
 
-                const std::string& alreayReceived { m_request.getBody() };
-                if (!alreayReceived.empty()) {
-                    clbytes -= static_cast<int>(alreayReceived.size());
+                const int alreayReceived { m_request.getReceivedDataSize() };
+                if (alreayReceived != 0) {
+                    clbytes -= alreayReceived;
                 }
 
                 while (clbytes > 0) {
