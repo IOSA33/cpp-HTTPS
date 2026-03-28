@@ -5,11 +5,9 @@
 #include <stdio.h>
 #include <vector>
 #include <string>
-#include <fstream>
 #include "Server.h"
 #include "Request/Request.h"
 #include "Response/Response.h"
-#include <format>
 #include <print>
 #include <utility>
 #include <csignal>
@@ -69,18 +67,20 @@ int Server::run() {
     }
 
     std::signal(SIGINT, signal_handler);
-    std::thread closeInSOCK([&in](){
+    std::thread closeServerClientSOCK([&in, this](){
         while(glocal_isRunning);
         closesocket(in);
+        if (m_clientSocket != INVALID_SOCKET) {
+            closesocket(m_clientSocket);
+            m_clientSocket = INVALID_SOCKET;
+        }
     });
-    closeInSOCK.detach();
+    closeServerClientSOCK.detach();
 
     while (glocal_isRunning) {
         // Accept functions
-        SOCKET acceptSocket;
-
-        acceptSocket = accept(in, NULL, NULL);
-        if(acceptSocket == INVALID_SOCKET) {
+        m_clientSocket = accept(in, NULL, NULL);
+        if(m_clientSocket == INVALID_SOCKET) {
             std::cout << "accept failed:" << WSAGetLastError() << std::endl;
             if (!glocal_isRunning) {
                 std::println("Socket Connection was Closed Successfully!");
@@ -94,7 +94,7 @@ int Server::run() {
         char recvBuf[1024];
         int recvBuflen = sizeof(recvBuf);
 
-        int bytesRecv = recv(acceptSocket, recvBuf, recvBuflen - 1, 0);
+        int bytesRecv = recv(m_clientSocket, recvBuf, recvBuflen - 1, 0);
         if (bytesRecv > 0) {
             recvBuf[bytesRecv] = '\0';
             
@@ -104,7 +104,7 @@ int Server::run() {
             Response m_response{};
 
             // Logging for debug and main logic
-            std::cout << "\nRecived from client: \n" << recvBuf << std::endl;
+            std::println("\nRecived from client:\n{}", recvBuf);
 
             // send() Send back to the client
             std::string response{};
@@ -127,7 +127,7 @@ int Server::run() {
                 }
 
                 while (clbytes > 0) {
-                    int bytesRecv = recv(acceptSocket, recvBuf, recvBuflen - 1, 0);
+                    int bytesRecv = recv(m_clientSocket, recvBuf, recvBuflen - 1, 0);
 
                     if (bytesRecv > 0) {
                         recvBuf[bytesRecv] = '\0';
@@ -145,8 +145,8 @@ int Server::run() {
             // App Logic completes here 
 
 
-            int bytes_sent = send(acceptSocket, response.c_str(), response.size(), 0);
-            closesocket(acceptSocket);
+            int bytes_sent = send(m_clientSocket, response.c_str(), response.size(), 0);
+            closesocket(m_clientSocket);
 
             if (bytes_sent == SOCKET_ERROR) {
                 // If sending fails, print an error

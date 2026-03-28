@@ -32,8 +32,7 @@ void Response::findRouteAndExecute(
         std::println("No such Route!");
     }
 
-    std::println("Response::findRouteAndExecute, Didn't found any Route, using USE Middleware!");
-
+    // If such Route doesn't exists, First we try to use "USE" middleware
     auto middleware_it { routes.find("USE") };
     if (middleware_it != routes.end()) {
         auto pagenotfound { middleware_it->second.find("PageNotFound") };
@@ -45,6 +44,7 @@ void Response::findRouteAndExecute(
         std::println("Response::findRouteAndExecute, No such USE Method!");
     }
 
+    // If no such "USE" middleware, we send Library specific PageNotFound html Response
     pageNotFound();
     responseToClient = response.returnResponse();
 }

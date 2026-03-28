@@ -5,7 +5,7 @@
 #include <map>
 #include <print>
 #include <utility>
-#include <csignal>
+#include <winsock2.h>
 #include "Request/Request.h"
 #include "Response/Response.h"
 
@@ -20,6 +20,7 @@ class Server {
 private:
     int m_port{};
     std::string m_ip{};
+    SOCKET m_clientSocket{};
     // Method, route, origPath, lambda
     std::map<std::string, std::map<std::string, std::pair<std::string, std::function<void(Request&, Response&)>>>> m_routes;
     

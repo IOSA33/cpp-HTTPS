@@ -114,9 +114,6 @@ std::string Request::getHeader(const std::string& headerToFind) const {
 
     if (header_it != m_headers.end()) {
         return header_it->second;
-
-    } else {
-        std::println("Request::getHeader, Didn't found such Header: {}", headerToFind);
     }
 
     return "";
