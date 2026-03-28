@@ -62,7 +62,7 @@ int Server::run() {
         std::cout << "Listen() is OK, I'm waiting for connections..." << std::endl;
     }
 
-    while (true) {
+    while (m_isRunning) {
         // Accept functions
         SOCKET acceptSocket;
         acceptSocket = accept(in, NULL, NULL);
