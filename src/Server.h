@@ -5,6 +5,7 @@
 #include <map>
 #include <print>
 #include <utility>
+#include <csignal>
 #include "Request/Request.h"
 #include "Response/Response.h"
 
@@ -19,7 +20,6 @@ class Server {
 private:
     int m_port{};
     std::string m_ip{};
-    bool m_isRunning{ true };
     // Method, route, origPath, lambda
     std::map<std::string, std::map<std::string, std::pair<std::string, std::function<void(Request&, Response&)>>>> m_routes;
     
@@ -36,7 +36,4 @@ public:
     void Delete(const std::string& route, const std::function<void(Request&, Response&)>& lambda);
     void Put(const std::string& route, const std::function<void(Request&, Response&)>& lambda);    
     void Use(const std::string& path, const std::function<void(Request&, Response&)>& lambda);
-
-private:
-    
 };

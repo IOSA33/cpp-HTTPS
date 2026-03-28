@@ -12,9 +12,15 @@
 #include <format>
 #include <print>
 #include <utility>
+#include <csignal>
+#include <thread>
 
 #pragma comment (lib, "ws2_32.lib");
 // HTTP server in c++, I did my own custom implementation
+
+// Local globals and Declarations
+static bool glocal_isRunning{ true };
+void signal_handler(int signal);
 
 // To compile  "g++ server.cpp -lws2_32 -o server"
 int Server::run() {
@@ -62,13 +68,24 @@ int Server::run() {
         std::cout << "Listen() is OK, I'm waiting for connections..." << std::endl;
     }
 
-    while (m_isRunning) {
+    std::signal(SIGINT, signal_handler);
+    std::thread closeInSOCK([&in](){
+        while(glocal_isRunning);
+        closesocket(in);
+    });
+    closeInSOCK.detach();
+
+    while (glocal_isRunning) {
         // Accept functions
         SOCKET acceptSocket;
+
         acceptSocket = accept(in, NULL, NULL);
         if(acceptSocket == INVALID_SOCKET) {
             std::cout << "accept failed:" << WSAGetLastError() << std::endl;
-            continue;
+            if (!glocal_isRunning) {
+                std::println("Socket Connection was Closed Successfully!");
+                break;
+            }
         } else { 
             std::cout << "accept() is working" << std::endl; 
         } 
@@ -146,7 +163,7 @@ int Server::run() {
         }
     }
 
-    // TODO: Learn how to use signals for graceful shotdown
+    std::println("Graceful Shotdown!");
     // Terminating a Winsock2 dll
     WSACleanup();
     return 0;
@@ -171,6 +188,13 @@ void Server::Put(const std::string& path, const std::function<void(Request&, Res
 void Server::Use(const std::string& path, const std::function<void(Request&, Response&)>& lambda) {
     m_routes["USE"][path] = std::make_pair(path, lambda);
 }
+
+void signal_handler(int signal) {
+    if (signal == SIGINT) {
+        glocal_isRunning = false;
+    }
+}
+
 
 // Pretty Cool huh :)
 
