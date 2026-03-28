@@ -35,6 +35,7 @@ public:
     void Get(const std::string& route, const std::function<void(Request&, Response&)>& lambda);
     void Post(const std::string& route, const std::function<void(Request&, Response&)>& lambda);
     void Delete(const std::string& route, const std::function<void(Request&, Response&)>& lambda);
-    void Put(const std::string& route, const std::function<void(Request&, Response&)>& lambda);    
+    void Put(const std::string& route, const std::function<void(Request&, Response&)>& lambda);
+    void Options(const std::string& route, const std::function<void(Request&, Response&)>& lambda);
     void Use(const std::string& path, const std::function<void(Request&, Response&)>& lambda);
 };

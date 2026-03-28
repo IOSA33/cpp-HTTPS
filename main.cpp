@@ -43,6 +43,7 @@ int main() {
 
     server.Post("/mainpage", [](Request& req, Response& res) -> void {
         res.setStatus(201);
+        res.setHeader("Access-Control-Allow-Origin", "*");
         std::println("Content-Length is: {}", req.getHeader("Content-Length"));
         // Path is coming from the "build" folder
         res.sendFile("../html/htmlPostTest.html");
@@ -52,6 +53,15 @@ int main() {
         res.setStatus(200);
         std::string json = R"({"password":"123", "test":"testApi"})";
         res.json(json);
+    });
+
+    // TODO: cros origin R"(.*)"
+    server.Options("/mainpage", [](Request& req, Response& res) -> void {
+        res.setStatus(204);
+        res.setHeader("Access-Control-Allow-Origin", "*");
+        res.setHeader("Access-Control-Allow-Methods", "POST, GET, OPTIONS");
+        res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+        res.end();
     });
 
     server.Get("/favicon.ico", [](Request& req, Response& res) -> void {
