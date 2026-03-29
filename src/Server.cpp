@@ -72,7 +72,6 @@ int Server::run() {
         closesocket(in);
         if (m_clientSocket != INVALID_SOCKET) {
             closesocket(m_clientSocket);
-            m_clientSocket = INVALID_SOCKET;
         }
     });
     closeServerClientSOCK.detach();

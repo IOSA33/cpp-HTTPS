@@ -23,9 +23,9 @@ void Response::findRouteAndExecute(
     auto method_it { routes.find(method) };
 
     if (method_it != routes.end()) {
-        // This is for Options that if user defiened every R"(/*)"
+        // This is for Options that if user defiened every "(/*)"
         if (method == "OPTIONS") {
-            auto tryFindDot_it { method_it->second.find(R"(/*)") };
+            auto tryFindDot_it { method_it->second.find("(/*)") };
             if (tryFindDot_it != method_it->second.end()) {
                 tryFindDot_it->second.second(request, response);
                 responseToClient = response.returnResponse();

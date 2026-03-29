@@ -55,8 +55,8 @@ int main() {
         res.json(json);
     });
 
-    // TODO: cros origin R"(/*)"
-    server.Options(R"(/*)", [](Request& req, Response& res) -> void {
+    // "(/*)" means that every path that is incoming will be handled by this route
+    server.Options("(/*)", [](Request& req, Response& res) -> void {
         res.setStatus(204);
         res.setHeader("Access-Control-Allow-Origin", "*");
         res.setHeader("Access-Control-Allow-Methods", "POST, GET, OPTIONS");
