@@ -10,3 +10,4 @@ add_executable(app main.cpp
                    src/Response/Response.cpp)
 
 target_link_libraries(app PRIVATE ws2_32 stdc++exp)
+set(CMAKE_CXX_FLAGS "-O3 -Wall -march=native")
