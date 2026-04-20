@@ -26,9 +26,7 @@ int Server::run() {
     // Linking DLL
     // Starting WinSock
     WSADATA wsadata;
-    int wsaerr;
-    wsaerr = WSAStartup(MAKEWORD(2,2), &wsadata);
-    if (wsaerr != 0) {
+    if (WSAStartup(MAKEWORD(2,2), &wsadata) != 0) {
         std::cout << "Winsock dll not found" << std::endl;
         return 1;
     } else {
