@@ -6,7 +6,6 @@
 #include <print>
 #include <format>
 #include <algorithm>
-#include <stdexcept>
 #include <nlohmann/json.hpp>
 #include "Response.h"
 #include "../Request/Request.h"
@@ -19,7 +18,6 @@ void Response::findRouteAndExecute(
         Request& request,
         Response& response
     ) {
-
     request.parseBody();
 
     auto method_it { routes.find(method) };

@@ -3,7 +3,6 @@
 #include <windows.h>
 #include <winsock2.h>
 #include <stdio.h>
-#include <vector>
 #include <string>
 #include "Server.h"
 #include "Request/Request.h"
@@ -15,7 +14,6 @@
 #include <chrono>
 #include <condition_variable>
 
-#pragma comment (lib, "ws2_32.lib");
 // HTTP server in c++, I did my own custom implementation
 
 // Local globals and Declarations
@@ -91,7 +89,7 @@ int Server::run() {
             }
         } else { 
             std::cout << "accept() is working" << std::endl; 
-        } 
+        }
         
         // recv() Receives data from the client
         char recvBuf[1024];
@@ -99,6 +97,7 @@ int Server::run() {
 
         int bytesRecv = recv(m_clientSocket, recvBuf, recvBuflen - 1, 0);
         if (bytesRecv > 0) {
+            auto start { std::chrono::steady_clock::now() };
             recvBuf[bytesRecv] = '\0';
             
             // Later going to work with threadpool, so every client will have
@@ -159,6 +158,10 @@ int Server::run() {
             }
             std::println("Connection Closed!");
 
+            auto end { std::chrono::steady_clock::now() };
+            auto duration {std::chrono::duration<double, std::milli>(end - start)};
+            std::println("Time used WHOLE request: {}", duration);
+            
         } else {
             // If no data is received, print an error message
             std::cerr << "recv failed: " << WSAGetLastError() << std::endl;

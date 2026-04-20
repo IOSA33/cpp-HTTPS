@@ -3,7 +3,6 @@
 #include <string>
 #include <string_view>
 #include <unordered_map>
-#include <vector>
 #include <map>
 #include <print>
 #include <nlohmann/json.hpp>
@@ -25,7 +24,7 @@ public:
     void parseBody();
     void printBodyString() const { std::println("{}", m_body_string); }
     std::string getBody(std::string_view key) const;
-    const int getReceivedDataSize() const { return static_cast<int>(m_body_string.size()); }
+    int getReceivedDataSize() const { return static_cast<int>(m_body_string.size()); }
     const std::string& getMethod(std::string_view buf);
     const std::string& getPath(std::string_view buf);
     std::string getHeader(const std::string& headerToFind) const;

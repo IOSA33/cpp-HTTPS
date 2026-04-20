@@ -1,7 +1,5 @@
 #include "Request.h"
 #include <string>
-#include <vector>
-#include <algorithm>
 #include <print>
 #include <chrono>
 #include <iostream>
@@ -9,7 +7,6 @@
 #include <nlohmann/json.hpp>
 
 void Request::parser(const std::string& req) {
-    auto start { std::chrono::steady_clock::now() };
     auto it = req.find("\r\n\r\n");
 
     if (it != std::string::npos) {
@@ -45,10 +42,6 @@ void Request::parser(const std::string& req) {
                 value += headers[i];
             }
         }
-
-        auto end { std::chrono::steady_clock::now() };
-        auto duration {std::chrono::duration<double, std::milli>(end - start)};
-        std::println("Time used: {}", duration);
 
         m_body_string.append(req, it + 4, std::string::npos);
 
