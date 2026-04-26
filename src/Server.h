@@ -21,6 +21,8 @@ class Server {
 private:
     int m_port{};
     std::string m_ip{};
+    std::string m_certificate{};
+    std::string m_private_key{};
     SOCKET m_clientSocket{};
     std::mutex m_mutex{};
     // Method, route, origPath, lambda
@@ -30,6 +32,10 @@ public:
     Server(const std::string& ip, int port) 
         : m_port(port), m_ip(ip) {
             std::println("Server Started at Port: {}", port);
+        }
+    Server(const std::string& ip, int port, const std::string& certificate, const std::string& private_key)
+        : m_port(port), m_ip(ip), m_certificate(certificate), m_private_key(private_key) {
+            std::println("(TLS) Server Started at Port: {}", port);
         }
     int run();
 

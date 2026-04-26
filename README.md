@@ -8,13 +8,22 @@
 - Set headers and body for response
 - Different USE middlewares
 
-# How to Start
+# How to Start TLS
+## Step 1
+### In main folder
+```
+mkdir keys
+- You need to generate yours own OpenSSL keys (Private/Public-Key.pem)
+- Also (Certificate.pem)
+```
+## Step 2
+### In main folder
 ```
 mkdir build
 cd build
 cmake ..
 ninja
-./app.exe
+./app.exe ../keys/my_certificate.pem ../keys/my_private_key.pem
 ```
 
 # Examples

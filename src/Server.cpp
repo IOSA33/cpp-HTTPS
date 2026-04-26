@@ -14,6 +14,9 @@
 #include <chrono>
 #include <condition_variable>
 
+#include <openssl/ssl.h>
+#include <openssl/err.h>
+
 // HTTP server in c++, I did my own custom implementation
 
 // Local globals and Declarations
@@ -23,13 +26,34 @@ void signal_handler(int signal);
 
 int Server::run() {
     
+    SOCKET in;
     WSADATA wsadata;
+    int rc;
+
+    SSL_CTX *ctx = SSL_CTX_new(TLS_server_method());
+    if (ctx == nullptr) {
+        std::cout << "Unable to create SSL context\n";
+        return 1;
+    }
+
+    rc = SSL_CTX_use_certificate_file(ctx, m_certificate.c_str(), SSL_FILETYPE_PEM);
+    if (rc <= 0) {
+        std::cout << "SSL_CTX_use_certificate_file() Error loading server certificate!\n";
+        return 1;
+    }
+
+    rc = SSL_CTX_use_PrivateKey_file(ctx, m_private_key.c_str(), SSL_FILETYPE_PEM);
+    if (rc <= 0) {
+        std::cout << "SSL_CTX_use_PrivateKey_file() Error loading server private key!\n";
+        return 1;
+    }
+
     if (WSAStartup(MAKEWORD(2,2), &wsadata) != 0) {
         std::cout << "Winsock dll not found" << std::endl;
         return 1;
     }
 
-    SOCKET in = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+    in = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     if (in == INVALID_SOCKET) {
         std::cout << "Error at socket()" << WSAGetLastError() << std::endl;
         WSACleanup();
@@ -52,7 +76,7 @@ int Server::run() {
         WSACleanup();
         return 1;
     } else {
-        std::cout << "Listen() is OK, I'm waiting for connections..." << std::endl;
+        std::cout << "Listen() is OK, (TLS) Server is waiting for connections..." << std::endl;
     }
 
     std::signal(SIGINT, signal_handler);
@@ -76,16 +100,28 @@ int Server::run() {
                 break;
             }
         } else { 
-            std::cout << "accept() is working" << std::endl; 
+            std::cout << "accept() is working" << std::endl;
+        }
+
+        SSL *ssl = SSL_new(ctx);
+        SSL_set_fd(ssl, m_clientSocket);
+        int ret = SSL_accept(ssl);
+        if (ret <= 0) {
+            std::println("Unable to accept SSL handshake: {}\n", SSL_get_error(ssl, ret));
+            SSL_free(ssl);
+            closesocket(m_clientSocket);
+            continue;
         }
         
         // recv() Receives data from the client
         char recvBuf[1024];
         int recvBuflen = sizeof(recvBuf);
 
-        int bytesRecv = recv(m_clientSocket, recvBuf, recvBuflen - 1, 0);
+        // int bytesRecv = recv(m_clientSocket, recvBuf, recvBuflen - 1, 0);
+        int bytesRecv = SSL_read(ssl, recvBuf, recvBuflen - 1);
+        
         if (bytesRecv > 0) {
-            
+
             auto start { std::chrono::steady_clock::now() };
             
             recvBuf[bytesRecv] = '\0';
@@ -136,8 +172,11 @@ int Server::run() {
             
             // App Logic completes here 
 
-            int bytes_sent = send(m_clientSocket, response.c_str(), response.size(), 0);
+            //int bytes_sent = send(m_clientSocket, response.c_str(), response.size(), 0);
+            int bytes_sent = SSL_write(ssl, response.c_str(), response.size());
             
+            SSL_shutdown(ssl);
+            SSL_free(ssl);
             closesocket(m_clientSocket);
 
             auto end { std::chrono::steady_clock::now() };
@@ -146,7 +185,7 @@ int Server::run() {
 
             if (bytes_sent == SOCKET_ERROR) {
                 // If sending fails, print an error
-                std::cerr << "send failed: " << WSAGetLastError() << std::endl;
+                std::cerr << "SSL_write() failed: " << WSAGetLastError() << std::endl;
             } else {
                 // Print the number of bytes sent
                 std::cout << "Sent " << bytes_sent << " bytes to client." << std::endl;
@@ -155,11 +194,12 @@ int Server::run() {
             
         } else {
             // If no data is received, print an error message
-            std::cerr << "recv failed: " << WSAGetLastError() << std::endl;
+            std::cerr << "SSL_read failed: " << WSAGetLastError() << std::endl;
         }
     }
 
     std::println("Graceful Shotdown!");
+    SSL_CTX_free(ctx);
     WSACleanup();
     return 0;
 }

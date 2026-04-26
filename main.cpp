@@ -3,12 +3,17 @@
 #include "src/Request/Request.h"
 #include "src/Response/Response.h"
 
-int main() {
-    Server server{ "0.0.0.0" , 6788 };
+int main(int argc, char *argv[]) {
+    if (argc < 3) {
+        std::println("usage: ./app.exe <certificate> <private_key>");
+        return 1;
+    }
+
+    Server server{ "0.0.0.0" , 6788, argv[1], argv[2] };
 
     // OpenSSl
 
-    // PageNotFound is an emun for Use middleware (check "server.h" for more)
+    // PageNotFound is an emun for "USE" middleware (check "server.h" for more)
     // server.Use("PageNotFound", [](Request& req, Response& res) -> void {
     //     res.setStatus(301);
     //     res.redirect("https://www.youtube.com");

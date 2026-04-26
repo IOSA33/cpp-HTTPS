@@ -9,5 +9,5 @@ add_executable(app main.cpp
                    src/Request/Request.cpp
                    src/Response/Response.cpp)
 
-target_link_libraries(app PRIVATE ws2_32 stdc++exp)
+target_link_libraries(app PRIVATE ws2_32 stdc++exp ssl crypto)
 set(CMAKE_CXX_FLAGS "-O3 -Wall -Wextra -march=native")
