@@ -43,11 +43,14 @@ int Server::run() {
 
     if (bind(in, (sockaddr*)&addr, sizeof(addr)) == SOCKET_ERROR) {
         std::cout << "Can't bind socket! " << WSAGetLastError() << std::endl;
+        WSACleanup();
 		return 1;
     }
 
     if (listen(in, SOMAXCONN) == SOCKET_ERROR) {
         std::cout << "error in listen() : " << WSAGetLastError() << std::endl;
+        WSACleanup();
+        return 1;
     } else {
         std::cout << "Listen() is OK, I'm waiting for connections..." << std::endl;
     }
