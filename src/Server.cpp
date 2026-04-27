@@ -155,7 +155,7 @@ int Server::run() {
                 }
 
                 while (clbytes > 0) {
-                    int bytesRecv = recv(m_clientSocket, recvBuf, recvBuflen - 1, 0);
+                    int bytesRecv = SSL_read(ssl, recvBuf, recvBuflen - 1);
 
                     if (bytesRecv > 0) {
                         recvBuf[bytesRecv] = '\0';
