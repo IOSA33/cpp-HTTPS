@@ -12,8 +12,8 @@
 ## Requirements 
 - c++23 and above
 - g++14 compiler and above
-- nlohmann/json libary
-- openssl libary
+- nlohmann/json library
+- OpenSSL library
 
 ## Step 1 - Generate Keys
 ### In main folder
