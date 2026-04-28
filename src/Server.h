@@ -7,6 +7,8 @@
 #include <utility>
 #include <winsock2.h>
 #include <mutex>
+#include <thread>
+#include <condition_variable>
 #include <vector>
 #include <queue>
 #include "Request/Request.h"
@@ -25,7 +27,6 @@ private:
     std::string m_ip{};
     std::string m_certificate{};
     std::string m_private_key{};
-    SOCKET m_clientSocket{};
     std::mutex m_mutex{};
     // Method, route, origPath, lambda
     std::map<std::string, std::map<std::string, std::pair<std::string, std::function<void(Request&, Response&)>>>> m_routes;
@@ -58,7 +59,7 @@ public:
     void Use(const std::string& path, const std::function<void(Request&, Response&)>& lambda);
 
     // ThreadPool
-    void Start();
+    void StartThreadPool();
     void AddQueueJob(const std::function<void()>& job);
     void Stop();
     bool taskInQueue();

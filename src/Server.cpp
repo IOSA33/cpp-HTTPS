@@ -79,20 +79,24 @@ int Server::run() {
         std::cout << "Listen() is OK, (TLS) Server is waiting for connections..." << std::endl;
     }
 
+
+    // TODO: FIX that for threadpool
     std::signal(SIGINT, signal_handler);
     std::thread closeServerClientSOCK([&in, this](){
         std::unique_lock<std::mutex> lock(m_mutex);
         glocal_cv.wait(lock, []{ return !glocal_isRunning; });
         closesocket(in);
-        if (m_clientSocket != INVALID_SOCKET) {
-            closesocket(m_clientSocket);
-        }
+        // if (m_clientSocket != INVALID_SOCKET) {
+        //     closesocket(m_clientSocket);
+        // }
     });
     closeServerClientSOCK.detach();
 
+    StartThreadPool();
+
     while (glocal_isRunning) {
-        // Accept functions
-        m_clientSocket = accept(in, NULL, NULL);
+
+        SOCKET m_clientSocket = accept(in, NULL, NULL);
         if(m_clientSocket == INVALID_SOCKET) {
             std::cout << "accept failed:" << WSAGetLastError() << std::endl;
             if (!glocal_isRunning) {
@@ -103,99 +107,103 @@ int Server::run() {
             std::cout << "accept() is working" << std::endl;
         }
 
-        SSL *ssl = SSL_new(ctx);
-        SSL_set_fd(ssl, m_clientSocket);
-        int ret = SSL_accept(ssl);
-        if (ret <= 0) {
-            std::println("Unable to accept SSL handshake: {}\n", SSL_get_error(ssl, ret));
-            SSL_free(ssl);
-            closesocket(m_clientSocket);
-            continue;
-        }
-        
-        // recv() Receives data from the client
-        char recvBuf[1024];
-        int recvBuflen = sizeof(recvBuf);
-
-        // int bytesRecv = recv(m_clientSocket, recvBuf, recvBuflen - 1, 0);
-        int bytesRecv = SSL_read(ssl, recvBuf, recvBuflen - 1);
-        
-        if (bytesRecv > 0) {
-
-            auto start { std::chrono::steady_clock::now() };
+        AddQueueJob([this, &ctx, m_clientSocket] {
+            SSL *ssl = SSL_new(ctx);
+            SSL_set_fd(ssl, m_clientSocket);
+            int ret = SSL_accept(ssl);
+            if (ret <= 0) {
+                std::println("Unable to accept SSL handshake: {}\n", SSL_get_error(ssl, ret));
+                SSL_free(ssl);
+                closesocket(m_clientSocket);
+                return;
+            }
             
-            recvBuf[bytesRecv] = '\0';
+            // recv() Receives data from the client
+            char recvBuf[1024];
+            int recvBuflen = sizeof(recvBuf);
+
+            // int bytesRecv = recv(m_clientSocket, recvBuf, recvBuflen - 1, 0);
+            int bytesRecv = SSL_read(ssl, recvBuf, recvBuflen - 1);
             
-            // Later going to work with threadpool, so every client will have
-            // own res req, cause we prevent data race
-            Request m_request{};
-            Response m_response{};
+            if (bytesRecv > 0) {
 
-            // Logging for debug and main logic
-            std::println("\nRecived from client:\n{}", recvBuf);
+                auto start { std::chrono::steady_clock::now() };
+                
+                recvBuf[bytesRecv] = '\0';
+                
+                // Later going to work with threadpool, so every client will have
+                // own res req, cause we prevent data race
+                Request m_request{};
+                Response m_response{};
 
-            // send() Send back to the client
-            std::string response{};
+                // Logging for debug and main logic
+                std::println("\nRecived from client:\n{}", recvBuf);
 
-            const std::string& method { m_request.getMethod(recvBuf) };
-            std::println("Method is: {}", method);
-            const std::string& path { m_request.getPath(recvBuf) };
-            std::println("Path is: {}", path);
+                // send() Send back to the client
+                std::string response{};
 
-            // This parses only headers
-            m_request.parser(recvBuf);
+                const std::string& method { m_request.getMethod(recvBuf) };
+                std::println("Method is: {}", method);
+                const std::string& path { m_request.getPath(recvBuf) };
+                std::println("Path is: {}", path);
 
-            std::string cl { m_request.getHeader("Content-Length") };
-            if (!cl.empty()) {
-                int clbytes { std::stoi(cl) };
+                // This parses only headers
+                m_request.parser(recvBuf);
 
-                const int alreayReceived { m_request.getReceivedDataSize() };
-                if (alreayReceived > 0) {
-                    clbytes -= alreayReceived;
-                }
+                std::string cl { m_request.getHeader("Content-Length") };
+                if (!cl.empty()) {
+                    int clbytes { std::stoi(cl) };
 
-                while (clbytes > 0) {
-                    int bytesRecv = SSL_read(ssl, recvBuf, recvBuflen - 1);
+                    const int alreayReceived { m_request.getReceivedDataSize() };
+                    if (alreayReceived > 0) {
+                        clbytes -= alreayReceived;
+                    }
 
-                    if (bytesRecv > 0) {
-                        recvBuf[bytesRecv] = '\0';
-                        std::print("\nRecived from client:\n{}\n\n", recvBuf);
-                        m_request.addBody(recvBuf);
-                        clbytes -= bytesRecv;
-                    } else {
-                        break;
+                    while (clbytes > 0) {
+                        int bytesRecv = SSL_read(ssl, recvBuf, recvBuflen - 1);
+
+                        if (bytesRecv > 0) {
+                            recvBuf[bytesRecv] = '\0';
+                            std::print("\nRecived from client:\n{}\n\n", recvBuf);
+                            m_request.addBody(recvBuf);
+                            clbytes -= bytesRecv;
+                        } else {
+                            break;
+                        }
                     }
                 }
-            }
-            // The Main logic to response Client
-            m_response.findRouteAndExecute(method, path, m_routes, response, m_request, m_response);
-            
-            // App Logic completes here 
+                // The Main logic to response Client
+                m_response.findRouteAndExecute(method, path, m_routes, response, m_request, m_response);
+                
+                // App Logic completes here 
 
-            //int bytes_sent = send(m_clientSocket, response.c_str(), response.size(), 0);
-            int bytes_sent = SSL_write(ssl, response.c_str(), response.size());
-            
-            SSL_shutdown(ssl);
-            SSL_free(ssl);
-            closesocket(m_clientSocket);
+                //int bytes_sent = send(m_clientSocket, response.c_str(), response.size(), 0);
+                int bytes_sent = SSL_write(ssl, response.c_str(), response.size());
+                
+                SSL_shutdown(ssl);
+                SSL_free(ssl);
+                closesocket(m_clientSocket);
 
-            auto end { std::chrono::steady_clock::now() };
-            auto duration {std::chrono::duration<double, std::milli>(end - start)};
-            std::println("Time used WHOLE request: {}", duration);
+                auto end { std::chrono::steady_clock::now() };
+                auto duration {std::chrono::duration<double, std::milli>(end - start)};
+                std::println("Time used WHOLE request: {}", duration);
 
-            if (bytes_sent == SOCKET_ERROR) {
-                // If sending fails, print an error
-                std::cerr << "SSL_write() failed: " << WSAGetLastError() << std::endl;
+                if (bytes_sent == SOCKET_ERROR) {
+                    // If sending fails, print an error
+                    std::cerr << "SSL_write() failed: " << WSAGetLastError() << std::endl;
+                } else {
+                    // Print the number of bytes sent
+                    std::cout << "Sent " << bytes_sent << " bytes to client." << std::endl;
+                }
+                std::println("Connection Closed!");
+                
             } else {
-                // Print the number of bytes sent
-                std::cout << "Sent " << bytes_sent << " bytes to client." << std::endl;
+                // If no data is received, print an error message
+                std::cerr << "SSL_read failed: " << WSAGetLastError() << std::endl;
             }
-            std::println("Connection Closed!");
-            
-        } else {
-            // If no data is received, print an error message
-            std::cerr << "SSL_read failed: " << WSAGetLastError() << std::endl;
-        }
+        }); // AddQueueJob
+
+
     }
 
     std::println("Graceful Shotdown!");
@@ -236,7 +244,7 @@ void signal_handler(int signal) {
 }
 
 
-void Server::Start() {
+void Server::StartThreadPool() {
     const uint32_t num_of_threads { std::thread::hardware_concurrency() };
     for (uint32_t i { 0 }; i < num_of_threads; ++i) {
         m_vector_of_threads.emplace_back(std::thread(&Server::ThreadLoop, this));
@@ -254,6 +262,7 @@ void Server::ThreadLoop() {
             if (m_stop_threads && m_jobs_queue.empty()) {
                 return;
             }
+            std::cout << "Im worker ID: " << std::this_thread::get_id() << '\n';
             job = m_jobs_queue.front();
             m_jobs_queue.pop();
         }
