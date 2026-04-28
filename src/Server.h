@@ -7,6 +7,8 @@
 #include <utility>
 #include <winsock2.h>
 #include <mutex>
+#include <vector>
+#include <queue>
 #include "Request/Request.h"
 #include "Response/Response.h"
 
@@ -27,7 +29,15 @@ private:
     std::mutex m_mutex{};
     // Method, route, origPath, lambda
     std::map<std::string, std::map<std::string, std::pair<std::string, std::function<void(Request&, Response&)>>>> m_routes;
-    
+
+    // ThreadPool
+    bool m_stop_threads{ false };
+    std::mutex m_mutex_queue{};
+    std::condition_variable m_mutex_condition{};
+    std::vector<std::thread> m_vector_of_threads{};
+    std::queue<std::function<void()>> m_jobs_queue{};
+    void ThreadLoop();
+
 public:
     Server(const std::string& ip, int port) 
         : m_port(port), m_ip(ip) {
@@ -46,4 +56,11 @@ public:
     void Put(const std::string& route, const std::function<void(Request&, Response&)>& lambda);
     void Options(const std::string& route, const std::function<void(Request&, Response&)>& lambda);
     void Use(const std::string& path, const std::function<void(Request&, Response&)>& lambda);
+
+    // ThreadPool
+    void Start();
+    void AddQueueJob(const std::function<void()>& job);
+    void Stop();
+    bool taskInQueue();
+
 };

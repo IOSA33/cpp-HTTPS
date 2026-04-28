@@ -236,5 +236,61 @@ void signal_handler(int signal) {
 }
 
 
+void Server::Start() {
+    const uint32_t num_of_threads { std::thread::hardware_concurrency() };
+    for (uint32_t i { 0 }; i < num_of_threads; ++i) {
+        m_vector_of_threads.emplace_back(std::thread(&Server::ThreadLoop, this));
+    }
+}
+
+void Server::ThreadLoop() {
+    while (true) {
+        std::function<void()> job;
+        {
+            std::unique_lock<std::mutex> lock(m_mutex_queue);
+            m_mutex_condition.wait(lock, [this] {
+                return !m_jobs_queue.empty() || m_stop_threads; 
+            });
+            if (m_stop_threads && m_jobs_queue.empty()) {
+                return;
+            }
+            job = m_jobs_queue.front();
+            m_jobs_queue.pop();
+        }
+        job();
+    }
+}
+
+void Server::AddQueueJob(const std::function<void()>& job) {
+    {
+        std::unique_lock<std::mutex> lock(m_mutex_queue);
+        m_jobs_queue.emplace(job);
+    }
+    m_mutex_condition.notify_one();
+}
+
+bool Server::taskInQueue() {
+    bool threadPool_is_busy{};
+    {
+        std::unique_lock<std::mutex> lock(m_mutex_queue);
+        threadPool_is_busy = !m_jobs_queue.empty();
+    }
+    return threadPool_is_busy;
+}
+
+void Server::Stop() {
+    {
+        std::unique_lock<std::mutex> lock(m_mutex_queue);
+        m_stop_threads = true;
+    }
+    m_mutex_condition.notify_all();
+    for(std::thread& active_thread: m_vector_of_threads) {
+        active_thread.join();
+    }
+    m_vector_of_threads.clear();
+}
+
+
+
 // Pretty Cool huh :)
 
