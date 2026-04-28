@@ -79,26 +79,24 @@ int Server::run() {
         std::cout << "Listen() is OK, (TLS) Server is waiting for connections..." << std::endl;
     }
 
-
-    // TODO: FIX that for threadpool
     std::signal(SIGINT, signal_handler);
     std::thread closeServerClientSOCK([&in, this](){
-        std::unique_lock<std::mutex> lock(m_mutex);
-        glocal_cv.wait(lock, []{ return !glocal_isRunning; });
+        {
+            std::unique_lock<std::mutex> lock(m_mutex);
+            glocal_cv.wait(lock, []{ return !glocal_isRunning; });
+        }
+        shotdownAndCloseClientSockets();
+        StopThreads();
         closesocket(in);
-        // if (m_clientSocket != INVALID_SOCKET) {
-        //     closesocket(m_clientSocket);
-        // }
     });
     closeServerClientSOCK.detach();
 
     StartThreadPool();
 
     while (glocal_isRunning) {
-
         SOCKET m_clientSocket = accept(in, NULL, NULL);
         if(m_clientSocket == INVALID_SOCKET) {
-            std::cout << "accept failed:" << WSAGetLastError() << std::endl;
+            std::cout << "accept() failed: " << WSAGetLastError() << std::endl;
             if (!glocal_isRunning) {
                 std::println("Socket Connection was Closed Successfully!");
                 break;
@@ -107,17 +105,18 @@ int Server::run() {
             std::cout << "accept() is working" << std::endl;
         }
 
-        AddQueueJob([this, &ctx, m_clientSocket] {
-            SSL *ssl = SSL_new(ctx);
-            SSL_set_fd(ssl, m_clientSocket);
-            int ret = SSL_accept(ssl);
-            if (ret <= 0) {
-                std::println("Unable to accept SSL handshake: {}\n", SSL_get_error(ssl, ret));
-                SSL_free(ssl);
-                closesocket(m_clientSocket);
-                return;
-            }
-            
+        SSL *ssl = SSL_new(ctx);
+        SSL_set_fd(ssl, m_clientSocket);
+        int ret = SSL_accept(ssl);
+        if (ret <= 0) {
+            std::println("Unable to accept SSL handshake: {}\n", SSL_get_error(ssl, ret));
+            SSL_free(ssl);
+            closesocket(m_clientSocket);
+            continue;
+        }
+
+        AddQueueJob([this, ssl, m_clientSocket, ret] {
+            m_vActive_clientSockets.emplace_back(m_clientSocket);
             // recv() Receives data from the client
             char recvBuf[1024];
             int recvBuflen = sizeof(recvBuf);
@@ -137,15 +136,15 @@ int Server::run() {
                 Response m_response{};
 
                 // Logging for debug and main logic
-                std::println("\nRecived from client:\n{}", recvBuf);
+                // std::println("\nRecived from client:\n{}", recvBuf);
 
                 // send() Send back to the client
                 std::string response{};
 
                 const std::string& method { m_request.getMethod(recvBuf) };
-                std::println("Method is: {}", method);
+                // std::println("Method is: {}", method);
                 const std::string& path { m_request.getPath(recvBuf) };
-                std::println("Path is: {}", path);
+                // std::println("Path is: {}", path);
 
                 // This parses only headers
                 m_request.parser(recvBuf);
@@ -188,18 +187,25 @@ int Server::run() {
                 auto duration {std::chrono::duration<double, std::milli>(end - start)};
                 std::println("Time used WHOLE request: {}", duration);
 
+                std::cout << "Before Current active sessions -> " << m_vActive_clientSockets.size() << '\n';
+                std::erase(m_vActive_clientSockets, m_clientSocket);
+                std::cout << "Current active sessions -> " << m_vActive_clientSockets.size() << '\n';
+
                 if (bytes_sent == SOCKET_ERROR) {
                     // If sending fails, print an error
-                    std::cerr << "SSL_write() failed: " << WSAGetLastError() << std::endl;
+                    std::cerr << "SSL_write() failed: " << SSL_get_error(ssl, ret) << std::endl;
                 } else {
                     // Print the number of bytes sent
-                    std::cout << "Sent " << bytes_sent << " bytes to client." << std::endl;
+                    // std::cout << "Sent " << bytes_sent << " bytes to client." << std::endl;
                 }
                 std::println("Connection Closed!");
                 
             } else {
                 // If no data is received, print an error message
-                std::cerr << "SSL_read failed: " << WSAGetLastError() << std::endl;
+                std::cerr << "SSL_read failed: " << SSL_get_error(ssl, ret) << std::endl;
+                SSL_free(ssl);
+                closesocket(m_clientSocket);
+                std::erase(m_vActive_clientSockets, m_clientSocket);
             }
         }); // AddQueueJob
 
@@ -238,6 +244,7 @@ void Server::Use(const std::string& path, const std::function<void(Request&, Res
 
 void signal_handler(int signal) {
     if (signal == SIGINT) {
+        std::cout << "CTRL+C was CALLED!\n";
         glocal_isRunning = false;
         glocal_cv.notify_all();
     }
@@ -255,8 +262,8 @@ void Server::ThreadLoop() {
     while (true) {
         std::function<void()> job;
         {
-            std::unique_lock<std::mutex> lock(m_mutex_queue);
-            m_mutex_condition.wait(lock, [this] {
+            std::unique_lock<std::mutex> lock(m_mutex);
+            m_condition_variable.wait(lock, [this] {
                 return !m_jobs_queue.empty() || m_stop_threads; 
             });
             if (m_stop_threads && m_jobs_queue.empty()) {
@@ -272,33 +279,41 @@ void Server::ThreadLoop() {
 
 void Server::AddQueueJob(const std::function<void()>& job) {
     {
-        std::unique_lock<std::mutex> lock(m_mutex_queue);
+        std::unique_lock<std::mutex> lock(m_mutex);
         m_jobs_queue.emplace(job);
     }
-    m_mutex_condition.notify_one();
+    m_condition_variable.notify_one();
 }
 
 bool Server::taskInQueue() {
     bool threadPool_is_busy{};
     {
-        std::unique_lock<std::mutex> lock(m_mutex_queue);
+        std::unique_lock<std::mutex> lock(m_mutex);
         threadPool_is_busy = !m_jobs_queue.empty();
     }
     return threadPool_is_busy;
 }
 
-void Server::Stop() {
+void Server::StopThreads() {
     {
-        std::unique_lock<std::mutex> lock(m_mutex_queue);
+        std::unique_lock<std::mutex> lock(m_mutex);
         m_stop_threads = true;
     }
-    m_mutex_condition.notify_all();
+    m_condition_variable.notify_all();
     for(std::thread& active_thread: m_vector_of_threads) {
         active_thread.join();
     }
     m_vector_of_threads.clear();
 }
 
+void Server::shotdownAndCloseClientSockets() {
+    if (!m_vActive_clientSockets.empty()) {
+        for (SOCKET& i: m_vActive_clientSockets) {
+            shutdown(i, SD_BOTH);
+            closesocket(i);
+        }
+    }
+}
 
 
 // Pretty Cool huh :)

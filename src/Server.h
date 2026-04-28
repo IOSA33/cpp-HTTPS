@@ -11,6 +11,7 @@
 #include <condition_variable>
 #include <vector>
 #include <queue>
+#include <openssl/ssl.h>
 #include "Request/Request.h"
 #include "Response/Response.h"
 
@@ -27,17 +28,16 @@ private:
     std::string m_ip{};
     std::string m_certificate{};
     std::string m_private_key{};
-    std::mutex m_mutex{};
     // Method, route, origPath, lambda
     std::map<std::string, std::map<std::string, std::pair<std::string, std::function<void(Request&, Response&)>>>> m_routes;
 
     // ThreadPool
     bool m_stop_threads{ false };
-    std::mutex m_mutex_queue{};
-    std::condition_variable m_mutex_condition{};
+    std::mutex m_mutex{};
+    std::condition_variable m_condition_variable{};
     std::vector<std::thread> m_vector_of_threads{};
     std::queue<std::function<void()>> m_jobs_queue{};
-    void ThreadLoop();
+    std::vector<SOCKET> m_vActive_clientSockets{};
 
 public:
     Server(const std::string& ip, int port) 
@@ -58,10 +58,12 @@ public:
     void Options(const std::string& route, const std::function<void(Request&, Response&)>& lambda);
     void Use(const std::string& path, const std::function<void(Request&, Response&)>& lambda);
 
+private:
     // ThreadPool
+    void ThreadLoop();
     void StartThreadPool();
     void AddQueueJob(const std::function<void()>& job);
-    void Stop();
+    void StopThreads();
     bool taskInQueue();
-
+    void shotdownAndCloseClientSockets();
 };
